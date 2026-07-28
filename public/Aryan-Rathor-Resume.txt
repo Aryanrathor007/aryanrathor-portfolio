@@ -1,0 +1,24 @@
+ARYAN RATHOR
+Information Technology Undergraduate
+
+PROFILE
+IT undergraduate passionate about building impactful digital experiences and turning ideas into clean, functional products.
+
+EDUCATION
+Rajiv Gandhi Institute of Petroleum Technology (RGIPT)
+B.Tech in Information Technology — Upcoming
+
+Sanskar Shiksha Academy
+Senior Secondary (12th) — Final Score: 77%
+Secondary (10th) — Final Score: 88%
+
+SKILLS
+C++, Python, JavaScript, HTML, CSS, React, React Native, Tailwind CSS, Generative AI, Git, GitHub, Netlify
+
+PROJECT
+StudySync — Collaborative study platform with group study rooms, Pomodoro timers, leaderboards, and real-time progress tracking.
+
+CONTACT
+Email: aryanrathor174@gmail.com
+LinkedIn: linkedin.com/in/aryan-rathor-1732b4262/
+Location: RGIPT
