@@ -31,7 +31,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useState, type CSSProperties, type FormEvent } from 'react'
+import { useState, type ChangeEvent, type CSSProperties, type FormEvent } from 'react'
 
 export const Route = createFileRoute('/')({
   component: Portfolio,
@@ -119,27 +119,60 @@ const certifications = [
   { title: 'Anthropic Certification 4', verificationUrl: 'https://verify.skilljar.com/c/tro7wg2adqyr' },
 ]
 
+type ContactValues = { name: string; email: string; message: string }
+type ContactErrors = Partial<Record<keyof ContactValues, string>>
+
+const emptyContact: ContactValues = { name: '', email: '', message: '' }
+
+function validateContact({ name, email, message }: ContactValues): ContactErrors {
+  const errors: ContactErrors = {}
+  if (!name.trim()) errors.name = 'Name is required.'
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.email = 'Enter a valid email address.'
+  if (message.trim().length < 10) errors.message = 'Message must be at least 10 characters.'
+  return errors
+}
+
 function Portfolio() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeSkill, setActiveSkill] = useState('Languages')
   const [formStatus, setFormStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
+  const [contactValues, setContactValues] = useState<ContactValues>(emptyContact)
+  const [contactErrors, setContactErrors] = useState<ContactErrors>({})
+  const [botField, setBotField] = useState('')
+
+  const updateContact = (field: keyof ContactValues) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { value } = event.target
+    setContactValues((current) => ({ ...current, [field]: value }))
+    setContactErrors((current) => ({ ...current, [field]: undefined }))
+    if (formStatus === 'success' || formStatus === 'error') setFormStatus('idle')
+  }
 
   const submitContact = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (formStatus === 'sending') return
+
+    const errors = validateContact(contactValues)
+    setContactErrors(errors)
+    if (Object.keys(errors).length > 0) return
+
     setFormStatus('sending')
-    const form = event.currentTarget
-    const formData = new FormData(form)
-    const encodedData = new URLSearchParams()
-    formData.forEach((value, key) => encodedData.append(key, String(value)))
+    const encodedData = new URLSearchParams({
+      'form-name': 'contact',
+      'bot-field': botField,
+      name: contactValues.name.trim(),
+      email: contactValues.email.trim(),
+      message: contactValues.message.trim(),
+    })
 
     try {
+      // Posting to the static form document lets Netlify Forms handle the submission instead of the SSR function.
       const response = await fetch('/contact.html', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: encodedData.toString(),
       })
       if (!response.ok) throw new Error('Submission failed')
-      form.reset()
+      setContactValues(emptyContact)
       setFormStatus('success')
     } catch {
       setFormStatus('error')
@@ -325,20 +358,37 @@ function Portfolio() {
           <div className="contact-column">
             <div className="command-heading"><span>$</span> send --message</div>
             <p className="contact-intro">Have an opportunity, idea, or just want to say hello? Drop a message into the terminal.</p>
-            <form className="contact-form glow-card" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" onSubmit={submitContact}>
+            <form className="contact-form glow-card" name="contact" method="POST" data-netlify="true" netlify-honeypot="bot-field" onSubmit={submitContact} noValidate>
               <input type="hidden" name="form-name" value="contact" />
-              <p className="honeypot"><label>Don&apos;t fill this out: <input name="bot-field" /></label></p>
+              <p className="honeypot"><label>Don&apos;t fill this out: <input name="bot-field" value={botField} onChange={(event) => setBotField(event.target.value)} tabIndex={-1} autoComplete="off" /></label></p>
               <div className="window-bar"><span /><span /><span /><small>new-message.js</small></div>
               <div className="form-code">
-                <label><span>01</span><b>const</b> name =<input name="name" placeholder='"your name"' required /></label>
-                <label><span>02</span><b>const</b> email =<input name="email" type="email" placeholder='"you@email.com"' required /></label>
-                <label className="message-label"><span>03</span><b>const</b> message =<textarea name="message" placeholder='"let’s build something..."' required /></label>
+                <div className="code-line">
+                  <span className="line-number">01</span>
+                  <label className="code-key" htmlFor="contact-name"><b>contact</b> name =</label>
+                  <input id="contact-name" name="name" value={contactValues.name} onChange={updateContact('name')} placeholder='"your name"' autoComplete="name" aria-invalid={Boolean(contactErrors.name)} aria-describedby={contactErrors.name ? 'contact-name-error' : undefined} />
+                  {contactErrors.name && <p className="field-error" id="contact-name-error">{contactErrors.name}</p>}
+                </div>
+                <div className="code-line">
+                  <span className="line-number">02</span>
+                  <label className="code-key" htmlFor="contact-email"><b>contact</b> email =</label>
+                  <input id="contact-email" name="email" type="email" value={contactValues.email} onChange={updateContact('email')} placeholder='"you@email.com"' autoComplete="email" aria-invalid={Boolean(contactErrors.email)} aria-describedby={contactErrors.email ? 'contact-email-error' : undefined} />
+                  {contactErrors.email && <p className="field-error" id="contact-email-error">{contactErrors.email}</p>}
+                </div>
+                <div className="code-line message-line">
+                  <span className="line-number">03</span>
+                  <label className="code-key" htmlFor="contact-message"><b>contact</b> message =</label>
+                  <textarea id="contact-message" name="message" value={contactValues.message} onChange={updateContact('message')} placeholder='"let’s build something..."' aria-invalid={Boolean(contactErrors.message)} aria-describedby={contactErrors.message ? 'contact-message-error' : undefined} />
+                  {contactErrors.message && <p className="field-error" id="contact-message-error">{contactErrors.message}</p>}
+                </div>
               </div>
-              <button className="submit-button" type="submit" disabled={formStatus === 'sending'}>
+              <button className="submit-button" type="submit" disabled={formStatus === 'sending'} aria-busy={formStatus === 'sending'}>
                 <Send size={16} /> {formStatus === 'sending' ? 'pushing...' : 'git push origin/message'}
               </button>
-              {formStatus === 'success' && <p className="form-message success"><Check size={15} /> Message pushed successfully.</p>}
-              {formStatus === 'error' && <p className="form-message error">Push failed. Please email me directly.</p>}
+              <div aria-live="polite">
+                {formStatus === 'success' && <p className="form-message success"><Check size={15} /> Message pushed successfully. I&apos;ll get back to you soon.</p>}
+                {formStatus === 'error' && <p className="form-message error">Push failed. Please try again or email me directly.</p>}
+              </div>
             </form>
           </div>
 
